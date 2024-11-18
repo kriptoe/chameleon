@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Club Clowder NFT Collection</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+    <link rel="stylesheet" href="stylesheet.css">  
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">Chameleon Club</div>
+        <button id="connect-wallet">Connect Wallet</button>
+    </nav>
+
+    <div class="container">
+        <section class="hero">
+            <h1>Chameleon Club</h1>
+            <h2>A Hip2 NFT</h2>
+            <p>The first-ever NFT collection with built-in Hyperliquidity on Hyperliquid EVM</p>
+        </section>
+
+        <div id="error"></div>
+        <div id="status"></div>
+
+        <div class="feature-grid">
+            <!-- Mint card -->
+            <div class="feature-card mint-card">
+                <h3>Mint Your NFT</h3>
+                <div class="price-display">
+                    <p>Current Mint Price: <span id="mint-price">Loading...</span> ETH</p>
+                    <p>±0.3% price movement on every trade</p>
+                </div>
+                <div class="nft-display" id="nft-display">
+                    <!-- Latest minted NFT will be displayed here -->
+                </div>
+                <button id="mint-button" disabled>
+                    <div class="button-content">
+                        <span class="button-text">Mint NFT</span>
+                        <div class="loading-spinner"></div>
+                    </div>
+                </button>
+            </div>
+        
+            <!-- NFT Collection card -->
+            <div class="feature-card nft-collection-card">
+                <h3>Your Collection</h3>
+                <div id="nft-collection-grid" class="nft-grid">
+                    <!-- NFTs will be populated here -->
+                    <div class="no-nfts-message">Your NFTs will be displayed here</div>
+                </div>
+            </div>
+        
+            <!-- Rest of your feature cards -->
+            <div class="feature-card">
+                <h3>Revolutionary Liquidity</h3>
+                <p>Experience the first NFT collection with built-in hyperliquidity mechanics, ensuring smooth trading and price discovery.</p>
+            </div>
+        
+            <div class="feature-card">
+                <h3>Dynamic Pricing</h3>
+                <p>Watch as prices automatically adjust by 0.3% with each transaction, creating a truly dynamic market environment.</p>
+            </div>
+        
+            <div class="feature-card">
+                <h3>Fully On-Chain</h3>
+                <p>Every aspect of Club Clowder lives on the Hyperliquid EVM, ensuring complete transparency and true ownership.</p>
+            </div>
+        </div>
+        
+    <!-- Wallet Modal -->
+    <div id="wallet-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Connect Your Wallet</h2>
+            <button class="wallet-option" data-wallet="metamask">
+                MetaMask
+            </button>
+        </div>
+    </div>
+
+    <script>
+
+        const contractAddress = '0x6501DDEA6484b50b8FFa5D3d21d61a92DC0817Fb';
+const contractABI = [
+    "function mint() public payable",
+    "function sellNFT(uint256 tokenId) public",
+    "function getPrice() public view returns (uint256)",
+    "function tokenURI(uint256 tokenId) public view returns (string)",
+    "function ownerOf(uint256 tokenId) public view returns (address)",
+    "function currentTokenId() public view returns (uint256)"
+];
+
+let provider, signer, contract, userAddress;
+
+// Modal Elements
+const modal = document.getElementById('wallet-modal');
+const connectButton = document.getElementById('connect-wallet');
+const closeButton = document.querySelector('.close-button');
+
+// Check for stored wallet connection on page load
+async function checkStoredConnection() {
+    const storedAddress = localStorage.getItem('walletAddress');
+    if (storedAddress && window.ethereum) {
+        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+        if (accounts.length > 0 && accounts[0].toLowerCase() === storedAddress.toLowerCase()) {
+            await connectWallet(true);
+        } else {
+            localStorage.removeItem('walletAddress');
+        }
+    }
+}
+
+// Show/hide modal
+connectButton.addEventListener('click', () => {
+    if (!userAddress) {
+        modal.style.display = 'block';
+    }
+});
+
+closeButton.addEventListener('click', () => {
+    modal.style.display = 'none';
+});
+
+modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+        modal.style.display = 'none';
+    }
+});
+
+document.querySelectorAll('.wallet-option').forEach(option => {
+    option.addEventListener('click', async () => {
+        const walletType = option.dataset.wallet;
+        try {
+            if (walletType === 'metamask') {
+                await connectWallet();
+            }
+        } catch (error) {
+            showError(error.message);
+        }
+    });
+});
+
+async function connectWallet() {
+    try {
+        if (typeof window.ethereum === 'undefined') {
+            throw new Error('Please install MetaMask');
+        }
+
+        provider = new ethers.BrowserProvider(window.ethereum);
+        signer = await provider.getSigner();
+        userAddress = await signer.getAddress();
+        contract = new ethers.Contract(contractAddress, contractABI, signer);
+
+        connectButton.textContent = `${userAddress.slice(0,6)}...${userAddress.slice(-4)}`;
+        connectButton.classList.add('connected');
+        document.getElementById('mint-button').disabled = false;
+        modal.style.display = 'none';
+
+        updatePrice();
+        loadOwnedNFTs();
+    } catch (error) {
+        showError(error.message);
+    }
+}
+
+async function updatePrice() {
+    try {
+        const price = await contract.getPrice();
+        const priceInEth = ethers.formatEther(price);
+        document.getElementById('mint-price').textContent = priceInEth;
+    } catch (error) {
+        showError(error.message);
+    }
+}
+
+async function mintNFT() {
+    const mintButton = document.getElementById('mint-button');
+    if (mintButton.disabled) return; // Prevent double clicks
+    
+    try {
+        mintButton.disabled = true;
+        const price = await contract.getPrice();
+        const tx = await contract.mint({ value: price });
+        showStatus('Minting... Please wait for transaction confirmation.');
+        await tx.wait();
+        showStatus('NFT Minted successfully!');
+        updatePrice();
+        loadOwnedNFTs();
+    } catch (error) {
+        showError(error.message);
+    } finally {
+        mintButton.disabled = false;
+    }
+}
+async function sellNFT(tokenId) {
+    try {
+        const tx = await contract.sellNFT(tokenId);
+        showStatus('Selling... Please wait for transaction confirmation.');
+        await tx.wait();
+        showStatus('NFT Sold successfully!');
+        updatePrice();
+        loadOwnedNFTs();
+    } catch (error) {
+        showError(error.message);
+    }
+}
+
+async function loadOwnedNFTs() {
+    try {
+        const totalSupply = await contract.currentTokenId();
+        const nftCollectionGrid = document.getElementById('nft-collection-grid');
+        nftCollectionGrid.innerHTML = ''; // Clear existing content
+        
+        let hasNFTs = false;
+        
+        for (let i = 1; i <= totalSupply; i++) {
+            try {
+                const owner = await contract.ownerOf(i);
+                if (owner.toLowerCase() === userAddress.toLowerCase()) {
+                    hasNFTs = true;
+                    const uri = await contract.tokenURI(i);
+                    const metadata = JSON.parse(atob(uri.split(',')[1]));
+                    const svgData = atob(metadata.image.split(',')[1]);
+
+                    const nftCard = document.createElement('div');
+                    nftCard.className = 'owned-nft-card';
+                    nftCard.innerHTML = `
+                        <div class="owned-nft-image">${svgData}</div>
+                        <p>Token #${i}</p>
+                        <button class="sell-button" onclick="sellNFT(${i})">Sell</button>
+                    `;
+                    nftCollectionGrid.appendChild(nftCard);
+                }
+            } catch (e) {
+                continue;
+            }
+        }
+        
+        if (!hasNFTs) {
+            nftCollectionGrid.innerHTML = '<div class="no-nfts-message">Your NFTs will be displayed here</div>';
+        }
+    } catch (error) {
+        showError(error.message);
+    }
+}
+
+function showError(message) {
+    const errorDiv = document.getElementById('error');
+    errorDiv.textContent = message;
+    setTimeout(() => errorDiv.textContent = '', 5000);
+}
+
+function showStatus(message) {
+    const statusDiv = document.getElementById('status');
+    statusDiv.textContent = message;
+    setTimeout(() => statusDiv.textContent = '', 5000);
+}
+
+document.getElementById('mint-button').addEventListener('click', mintNFT);
+
+if (window.ethereum) {
+    window.ethereum.on('accountsChanged', () => {
+        const connectButton = document.getElementById('connect-wallet');
+        connectButton.textContent = 'Connect Wallet';
+        connectButton.classList.remove('connected');
+        userAddress = null;
+        window.location.reload();
+    });
+}
+
+document.addEventListener('DOMContentLoaded', checkStoredConnection);
+    </script>
+</body>
+</html>
+ 
