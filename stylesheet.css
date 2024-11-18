@@ -280,3 +280,104 @@
         #mint-button:disabled .button-text {
             opacity: 0.7;
         }
+        #connect-wallet {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            pointer-events: auto; /* Ensure clicks are always registered */
+        }
+        
+        #connect-wallet:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        #connect-wallet.connected {
+            background: linear-gradient(45deg, #60a5fa, #a855f7);
+        }
+        
+        /* Mint Button */
+        #mint-button {
+            padding: 15px 40px;
+            background: linear-gradient(45deg, #60a5fa, #a855f7);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.1rem;
+            min-width: 200px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #mint-button:not(:disabled) {
+            cursor: pointer;
+        }
+        
+        #mint-button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        
+        .button-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .loading-spinner {
+            display: none; /* Hidden by default */
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        /* Only show spinner when button is explicitly disabled */
+        #mint-button:disabled .loading-spinner {
+            display: inline-block;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Update the mint button HTML structure */
+        .button-content .button-text {
+            display: inline-block;
+        }
+        
+        /* Error and Status Messages */
+        #error, #status {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 1000;
+            display: none; /* Hidden by default */
+        }
+        
+        #error {
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+        }
+        
+        #status {
+            background: rgba(0, 255, 0, 0.8);
+            color: white;
+        }
+        
+        /* Show messages when they have content */
+        #error:not(:empty), #status:not(:empty) {
+            display: block;
+        }
